@@ -22,19 +22,6 @@
 #define MAX_BUFFER 1024
 
 /**
- * Memory must be locked
- * before reading
- * 
- * @param mem
- * @param sem_set_id
- * @return 
- */
-int buffer_index(shared_mem mem)
-{
-	return *(mem.adress + mem.size - 1);
-}
-
-/**
  * Done before multi-process => no need to lock
  * @param mem
  */
@@ -54,10 +41,14 @@ char buffer_read(shared_mem mem, int sem_set_id)
 {
 	char c;
 	std_sem_get(sem_set_id, SEM_MUTEX);
-	int index = buffer_index(mem);
-//	printf("Size (read): %d\n", index);
-	c = *(char*) (mem.adress + index - 1);
-	*(mem.adress + mem.size - 1) = index - 1;
+	//	printf("Size (read): %d\n", index);
+	c = mem.adress[0];
+	int index = mem.adress[mem.size - 1];
+	for (int i = 1; i < index; i++) {
+		mem.adress[i - 1] = mem.adress[i];
+	}
+	mem.adress[index] = '\0';
+	mem.adress[mem.size - 1]--;
 	std_sem_post(sem_set_id, SEM_MUTEX);
 	return c;
 }
@@ -66,10 +57,10 @@ void buffer_write(shared_mem mem, int sem_set_id, char c)
 {
 	//lock buffer
 	std_sem_get(sem_set_id, SEM_MUTEX);
-	int index = buffer_index(mem);
-	*(mem.adress + index) = c;
-	*(mem.adress + mem.size - 1) = index + 1;
-//	printf("Size (write): %d\n", buffer_index(mem));
+	int index = mem.adress[mem.size - 1];
+	mem.adress[index] = c;
+	mem.adress[mem.size - 1]++;
+	//	printf("Size (write): %d\n", buffer_index(mem));
 	std_sem_post(sem_set_id, SEM_MUTEX);
 }
 
@@ -87,7 +78,7 @@ void producer(shared_mem mem, int sem_set_id)
 	std_sem_get(sem_set_id, SEM_EMPTYCOUNT);
 	buffer_write(mem, sem_set_id, '\0');
 	std_sem_post(sem_set_id, SEM_FILLCOUNT);
-	
+
 	printf("End of producer\n");
 
 }
@@ -120,7 +111,7 @@ int main(int argc, char** argv)
 	int nsems;
 
 	shared_mem mem = std_malloc(MAX_BUFFER);
-	
+
 	buffer_init(mem);
 
 	nsems = 3;
