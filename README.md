@@ -11,7 +11,7 @@ Compiling
 Running
 --------
 
-`./prodCons`
+`./prodCons [message] [buffer_size]`
 
 TODO
 -----
