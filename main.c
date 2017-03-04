@@ -18,7 +18,6 @@
 #define SEM_FILLCOUNT 1
 #define SEM_EMPTYCOUNT 2
 #define SEM_DISPLAY 3 //Using a mutex for the display
-#define BUFFER_SIZE 5//Buffer can contain 3 items max
 
 #define MAX_BUFFER 1024
 
@@ -85,15 +84,13 @@ void buffer_write(shared_mem mem, int sem_set_id, char c)
 	std_sem_post(sem_set_id, SEM_MUTEX);
 }
 
-void producer(shared_mem mem, int sem_set_id)
+void producer(shared_mem mem, int sem_set_id, char *str)
 {
-	char *str = "Hello This is a long string"; //str to "produce" to the customer
-
 	for (int i = 0; str[i] != '\0'; i++) {
 		char c = str[i];
 		std_sem_get(sem_set_id, SEM_EMPTYCOUNT);
 		buffer_write(mem, sem_set_id, c);
-		
+
 		std_sem_get(sem_set_id, SEM_DISPLAY);
 		printf("------------------------------\n");
 		printf("Producer : %.*s\n", (int) (strlen(str) - i), str + i);
@@ -116,19 +113,32 @@ void consumer(shared_mem mem, int sem_set_id)
 		std_sem_get(sem_set_id, SEM_FILLCOUNT);
 		read = buffer_read(mem, sem_set_id);
 		total = std_concat(total, read);
-		
+
 		std_sem_get(sem_set_id, SEM_DISPLAY);
 		printf("------------------------------\n");
 		printf("Consumer : %s\n", total);
 		printf("------------------------------\n");
 		std_sem_post(sem_set_id, SEM_DISPLAY);
-		
+
 		std_sem_post(sem_set_id, SEM_EMPTYCOUNT);
 	} while (read != '\0');
 }
 
 int main(int argc, char** argv)
 {
+
+	int buffer_size = 5;
+	char *message = "Hello This is a long string"; //str to "produce" to the customer
+
+	if (argc > 1) {
+		message = argv[1];
+	}
+
+	if (argc > 2) {
+		buffer_size = atoi(argv[2]);
+		if (buffer_size == 0)//bad formated number
+			buffer_size = 5;
+	}
 
 	/*
 	 * 
@@ -142,7 +152,7 @@ int main(int argc, char** argv)
 
 	int nsems;
 
-	shared_mem mem = std_malloc(sizeof(char) * (BUFFER_SIZE + 1));
+	shared_mem mem = std_malloc(sizeof(char) * (buffer_size + 1));
 
 	buffer_init(mem);
 
@@ -151,12 +161,10 @@ int main(int argc, char** argv)
 	sem_set_id = std_sem_create(nsems);
 
 	std_sem_set(sem_set_id, SEM_MUTEX, 1); //possible to read at first
-	
+
 	std_sem_set(sem_set_id, SEM_DISPLAY, 1); //possible to display at first
 
-	std_sem_set(sem_set_id, SEM_EMPTYCOUNT, BUFFER_SIZE); //Remaining place
-
-	std_sem_print(sem_set_id);
+	std_sem_set(sem_set_id, SEM_EMPTYCOUNT, buffer_size); //Remaining place
 
 	pid_t pid = fork();
 
@@ -165,7 +173,7 @@ int main(int argc, char** argv)
 		printf("Error while forking\n");
 		return(EXIT_FAILURE);
 	case 0:
-		producer(mem, sem_set_id);
+		producer(mem, sem_set_id, message);
 		exit(EXIT_SUCCESS);
 	default:
 		consumer(mem, sem_set_id);

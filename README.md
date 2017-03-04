@@ -16,5 +16,5 @@ Running
 TODO
 -----
 
-- [ ] Improved display
-- [ ] Arguments in command line
+- [x] Improved display
+- [x] Arguments in command line
