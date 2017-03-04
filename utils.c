@@ -19,11 +19,11 @@ shared_mem std_malloc(size_t size)
 {
 	shared_mem mem;
 	mem.descripteur = shmget(IPC_PRIVATE, size, IPC_CREAT | IPC_EXCL | 0660);
-	mem.adress = (void*) - 1;
+	mem.address = (void*) - 1;
 	mem.size = size;
 
 	if (mem.descripteur != -1) {
-		mem.adress = shmat(mem.descripteur, NULL, 0);
+		mem.address = shmat(mem.descripteur, NULL, 0);
 	}
 
 	return mem;
@@ -31,7 +31,7 @@ shared_mem std_malloc(size_t size)
 
 int std_free(shared_mem mem)
 {
-	int ret = shmdt(mem.adress);
+	int ret = shmdt(mem.address);
 
 	if (ret != -1) {
 		ret = shmctl(mem.descripteur, IPC_RMID, 0);
@@ -62,7 +62,6 @@ int std_sem_create(int nsems)
 
 int std_sem_set(int sem_id, int semno, int value)
 {
-	printf("Adding %d to sem %d\n", value, sem_id);
 	semctl(sem_id, semno, SETVAL, value);
 }
 

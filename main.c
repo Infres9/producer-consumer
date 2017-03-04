@@ -17,9 +17,27 @@
 #define SEM_MUTEX 0
 #define SEM_FILLCOUNT 1
 #define SEM_EMPTYCOUNT 2
-#define BUFFER_SIZE 3//Buffer can contains 3 items max
+#define BUFFER_SIZE 5//Buffer can contain 3 items max
 
 #define MAX_BUFFER 1024
+
+/**
+ * 
+ * Buffer must be mute-locked before calling this function
+ * 
+ * @param mem the shared memory
+ */
+void buffer_print(shared_mem mem)
+{
+	printf("-------------------------------------\n");
+	int size = mem.size;
+	printf("Buffer  (%d): ", size);
+	for(int i = 0; i < size -1 ; i++){
+		printf("| %c ", mem.address[i]);
+	}
+	printf("| %d |\n",(int)mem.address[size -1]);
+	printf("-------------------------------------\n");
+}
 
 /**
  * Done before multi-process => no need to lock
@@ -27,9 +45,9 @@
  */
 void buffer_init(shared_mem mem)
 {
-	*(mem.adress + mem.size - 1) = 0; // last element = size of queue
+	mem.address[mem.size - 1] = 0;
 	for (int i = 0; i < mem.size - 1; i++) {
-		*(mem.adress + i) = '0';
+		mem.address[i] = '\0';
 	}
 }
 
@@ -41,14 +59,14 @@ char buffer_read(shared_mem mem, int sem_set_id)
 {
 	char c;
 	std_sem_get(sem_set_id, SEM_MUTEX);
-	//	printf("Size (read): %d\n", index);
-	c = mem.adress[0];
-	int index = mem.adress[mem.size - 1];
+	c = mem.address[0];
+	int index = mem.address[mem.size - 1];
 	for (int i = 1; i < index; i++) {
-		mem.adress[i - 1] = mem.adress[i];
+		mem.address[i - 1] = mem.address[i];
 	}
-	mem.adress[index] = '\0';
-	mem.adress[mem.size - 1]--;
+	mem.address[index - 1] = '\0';
+	mem.address[mem.size - 1]--;
+	buffer_print(mem);
 	std_sem_post(sem_set_id, SEM_MUTEX);
 	return c;
 }
@@ -57,10 +75,10 @@ void buffer_write(shared_mem mem, int sem_set_id, char c)
 {
 	//lock buffer
 	std_sem_get(sem_set_id, SEM_MUTEX);
-	int index = mem.adress[mem.size - 1];
-	mem.adress[index] = c;
-	mem.adress[mem.size - 1]++;
-	//	printf("Size (write): %d\n", buffer_index(mem));
+	int index = mem.address[mem.size - 1];
+	mem.address[index] = c;
+	mem.address[mem.size - 1]++;
+	buffer_print(mem);
 	std_sem_post(sem_set_id, SEM_MUTEX);
 }
 
@@ -79,8 +97,6 @@ void producer(shared_mem mem, int sem_set_id)
 	buffer_write(mem, sem_set_id, '\0');
 	std_sem_post(sem_set_id, SEM_FILLCOUNT);
 
-	printf("End of producer\n");
-
 }
 
 void consumer(shared_mem mem, int sem_set_id)
@@ -89,10 +105,8 @@ void consumer(shared_mem mem, int sem_set_id)
 	do {
 		std_sem_get(sem_set_id, SEM_FILLCOUNT);
 		read = buffer_read(mem, sem_set_id);
-		printf("consummer : %c\n", read);
 		std_sem_post(sem_set_id, SEM_EMPTYCOUNT);
 	} while (read != '\0');
-	printf("end of consummer\n");
 }
 
 int main(int argc, char** argv)
@@ -110,7 +124,7 @@ int main(int argc, char** argv)
 
 	int nsems;
 
-	shared_mem mem = std_malloc(MAX_BUFFER);
+	shared_mem mem = std_malloc(sizeof(char) * (BUFFER_SIZE + 1));
 
 	buffer_init(mem);
 
@@ -131,11 +145,9 @@ int main(int argc, char** argv)
 		printf("Error while forking\n");
 		return(EXIT_FAILURE);
 	case 0:
-		printf("Child process\n");
 		producer(mem, sem_set_id);
 		exit(EXIT_SUCCESS);
 	default:
-		printf("Father process\n");
 		consumer(mem, sem_set_id);
 		int code;
 		wait(&code);

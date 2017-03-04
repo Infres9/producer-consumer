@@ -14,7 +14,7 @@
 
 typedef struct shared_mem {
 	int descripteur;
-	char *adress;
+	char *address;
 	int size;
 } shared_mem;
 
