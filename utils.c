@@ -11,9 +11,9 @@
 #include <time.h> /* strftime */
 #include <sys/sem.h>
 #include <sys/types.h>
+#include <string.h>
 
 #ifdef UTILS_H  
-
 
 shared_mem std_malloc(size_t size)
 {
@@ -107,6 +107,16 @@ int std_sem_print(int sem_id)
 		}
 	}
 	return ret;
+}
+
+char *std_concat(char* origin, char nw_char)
+{
+	size_t len = strlen(origin);
+	char *str2 = malloc(len + 2);	
+	strcpy(str2, origin);
+	str2[len] = nw_char;
+	str2[len + 1] = '\0';
+	return str2;
 }
 
 #endif

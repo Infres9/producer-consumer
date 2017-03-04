@@ -108,5 +108,14 @@ int std_sem_set(int sem_id, int semno, int value);
  */
 int std_sem_print(int sem_id);
 
+/**
+ * Add the given char at the end of the string
+ * 
+ * @param origin the original string
+ * @param nw_char the char to add at the end of the string
+ * @return the newly create string with the char at the end
+ */
+char *std_concat(char *origin, char nw_char);
+
 #endif /* UTILS_H */
 
