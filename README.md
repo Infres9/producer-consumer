@@ -6,7 +6,7 @@ Producer-consumer problem with multiple process, using semaphore and shared memo
 Compiling
 ----------
 
-`Make`
+`make`
 
 Running
 --------
